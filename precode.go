@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // Task ...
@@ -39,14 +39,87 @@ var tasks = map[string]Task{
 	},
 }
 
-// Ниже напишите обработчики для каждого эндпоинта
-// ...
+// получаем задачу
+func getTask(w http.ResponseWriter, r *http.Request) {
+	resp, err := json.Marshal(tasks)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(resp)
+	if err != nil {
+		fmt.Println("Failed to write responce", err.Error())
+		return
+	}
+}
+
+// отправляем задачу
+func postTask(w http.ResponseWriter, r *http.Request) {
+	var (
+		task   Task
+		buffer bytes.Buffer
+	)
+	_, err := buffer.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = json.Unmarshal(buffer.Bytes(), &task); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tasks[task.ID] = task
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+}
+
+// получаем задачу по id
+func getTaskOnID(w http.ResponseWritte, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	task, ok := tasks[id]
+	if !ok {
+		http.Error(w, "Task not found.", http.StatusBadRequst)
+		return
+	}
+	resp, err := json.Marsal(task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	_, err = w.Write(resp)
+	if err != nil {
+		fmt.Printf("Write error: %v", err)
+	}
+	json.NewEncoder(w).Encode(task)
+}
+
+// удаляем задачу по id
+func taskDelete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	_, ok := task[id]
+	if !ok {
+		http.Error(w, "Failed to delete. The requested task is missing", http.StatusBadRequest)
+		return
+	}
+	delete(task, id)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
 
 func main() {
 	r := chi.NewRouter()
 
-	// здесь регистрируйте ваши обработчики
-	// ...
+	r.Get("/task", getTask)
+	r.Post("/task", postTask)
+	r.Get("/task", getTaskOnID)
+	r.Delete("/task", taskDelete)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		fmt.Printf("Ошибка при запуске сервера: %s", err.Error())
