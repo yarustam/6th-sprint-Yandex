@@ -56,14 +56,14 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // отправляем задачу
-func postTask(w http.ResponseWriter, r *http.Request) {
+func createTask(w http.ResponseWriter, r *http.Request) {
 	var (
 		task   Task
 		buffer bytes.Buffer
 	)
 	_, err := buffer.ReadFrom(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if err = json.Unmarshal(buffer.Bytes(), &task); err != nil {
@@ -77,7 +77,7 @@ func postTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // получаем задачу по id
-func getTaskOnID(w http.ResponseWritte, r *http.Request) {
+func getTask(w http.ResponseWritte, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	task, ok := tasks[id]
 	if !ok {
@@ -101,7 +101,7 @@ func getTaskOnID(w http.ResponseWritte, r *http.Request) {
 }
 
 // удаляем задачу по id
-func taskDelete(w http.ResponseWriter, r *http.Request) {
+func deleteTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	_, ok := task[id]
 	if !ok {
@@ -117,9 +117,9 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Get("/task", getTask)
-	r.Post("/task", postTask)
-	r.Get("/task", getTaskOnID)
-	r.Delete("/task", taskDelete)
+	r.Post("/task", createTask)
+	r.Get("/task", getTask)
+	r.Delete("/task", deleteTask)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		fmt.Printf("Ошибка при запуске сервера: %s", err.Error())
